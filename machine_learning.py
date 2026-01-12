@@ -231,51 +231,112 @@ def ml_model():
             )
             grid.fit(X_train_scaled, y_train)
             st.success(f"Best Alpha Lasso: {grid.best_params_['alpha']}")
+    
+    # =========================
+    # 10. RIDGE vs LASSO
+    # =========================
+    st.header("❽ Regularization: Ridge vs Lasso")
+
+    col1, col2 = st.columns(2)
+
+    # -------- Ridge Regression --------
+    with col1:
+        st.subheader("📘 Ridge Regression")
+
+        ridge = Ridge(alpha=112)
+        ridge.fit(X_train_scaled, y_train)
+
+        st.dataframe(
+            pd.DataFrame({
+                "Feature": X.columns,
+                "Coefficient": ridge.coef_
+            }),
+            use_container_width=True
+        )
+
+        y_pred = ridge.predict(X_test_scaled)
+
+
+
+    # -------- Lasso Regression --------
+    with col2:
+        st.subheader("📕 Lasso Regression")
+
+        lasso = Lasso(alpha=0.33)
+        lasso.fit(X_train_scaled, y_train)
+
+        st.dataframe(
+            pd.DataFrame({
+                "Feature": X.columns,
+                "Coefficient": lasso.coef_
+            }),
+            use_container_width=True
+        )
+
+        y_pred = lasso.predict(X_test_scaled)
+
+
 
     # =========================
     # 11. RIDGE & LASSO
     # =========================
-    st.header("❽ Model Evaluation")
+    st.header("❾ Model Evaluation")
 
-    col1, col2 = st.columns(2)
+    # Ridge
+    ridge = Ridge(alpha=112)
+    ridge.fit(X_train_scaled, y_train)
+    y_pred_ridge = ridge.predict(X_test_scaled)
 
-    with col1:
-        st.subheader("📘 Ridge Regression")
-        ridge = Ridge(alpha=112)
-        ridge.fit(X_train_scaled, y_train)
+    # Lasso
+    lasso = Lasso(alpha=0.33)
+    lasso.fit(X_train_scaled, y_train)
+    y_pred_lasso = lasso.predict(X_test_scaled)
 
-        y_pred = ridge.predict(X_test_scaled)
-
-        st.metric("MAE", round(mean_absolute_error(y_test, y_pred), 3))
-        st.metric("RMSE", round(np.sqrt(mean_squared_error(y_test, y_pred)), 3))
-        st.metric("R²", round(ridge.score(X_test_scaled, y_test), 3))
-
-    with col2:
-        st.subheader("📕 Lasso Regression")
-        lasso = Lasso(alpha=0.33)
-        lasso.fit(X_train_scaled, y_train)
-
-        y_pred = lasso.predict(X_test_scaled)
-
-        st.metric("MAE", round(mean_absolute_error(y_test, y_pred), 3))
-        st.metric("RMSE", round(np.sqrt(mean_squared_error(y_test, y_pred)), 3))
-        st.metric("R²", round(lasso.score(X_test_scaled, y_test), 3))
+    # Linear Regression
+    y_pred_linreg = linreg.predict(X_test)
 
     # =========================
-    # 12. LINEAR REGRESSION METRICS
+    # CREATE COMPARISON TABLE
     # =========================
-    st.subheader("📊 Linear Regression")
 
-    y_pred = linreg.predict(X_test)
+    results_df = pd.DataFrame({
+        "Model": ["Ridge Regression", "Lasso Regression", "Linear Regression"],
+        "MAE": [
+            mean_absolute_error(y_test, y_pred_ridge),
+            mean_absolute_error(y_test, y_pred_lasso),
+            mean_absolute_error(y_test, y_pred_linreg)
+        ],
+        "RMSE": [
+            np.sqrt(mean_squared_error(y_test, y_pred_ridge)),
+            np.sqrt(mean_squared_error(y_test, y_pred_lasso)),
+            np.sqrt(mean_squared_error(y_test, y_pred_linreg))
+        ],
+        "R²": [
+            ridge.score(X_test_scaled, y_test),
+            lasso.score(X_test_scaled, y_test),
+            r2_score(y_test, y_pred_linreg)
+        ],
+        "MAPE (%)": [
+            np.mean(np.abs((y_test - y_pred_ridge) / y_test)) * 100,
+            np.mean(np.abs((y_test - y_pred_lasso) / y_test)) * 100,
+            np.mean(np.abs((y_test - y_pred_linreg) / y_test)) * 100
+        ]
+    })
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("MAE", round(mean_absolute_error(y_test, y_pred), 3))
-    col2.metric(
-        "MAPE (%)",
-        round(np.mean(np.abs((y_test - y_pred) / y_test)) * 100, 2)
+    # =========================
+    # DISPLAY TABLE
+    # =========================
+
+    st.subheader("📊 Model Performance Comparison")
+    st.dataframe(
+        results_df.style.format({
+            "MAE": "{:.3f}",
+            "RMSE": "{:.3f}",
+            "R²": "{:.3f}",
+            "MAPE (%)": "{:.2f}"
+        }),
+        use_container_width=True
     )
-    col3.metric("RMSE", round(np.sqrt(mean_squared_error(y_test, y_pred)), 3))
-    col4.metric("R²", round(r2_score(y_test, y_pred), 3))
 
     # =========================
     # 13. SAVE MODEL
